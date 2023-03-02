@@ -1,0 +1,13 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "function-urls-vs-api-gateway"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-167xnalzxxva4"
+s3_prefix = "function-urls-vs-api-gateway"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+tags = "\"Application=ApiComparison\",\"SourceUrl=https:\\/\\/github.com\\/fourTheorem\\/function-urls-vs-api-gateway\""
+confirm_changeset = true
+disable_rollback = true

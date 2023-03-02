@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 
+  - AWS::Serverless-2016-10-31
+  - SlicWatch-v2
+Description: >
+  Function URLs vs HTTP API showcase
+
+Globals:
+  Function:
+    Timeout: 3
+    Tracing: Active
+  Api:
+    TracingEnabled: true
+
+Resources:
+  RestApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: app.apiHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      Events:
+        RestApiEvent:
+          Type: Api 
+          Properties:
+            Path: /rest-api
+            Method: GET
+            RestApiId:
+              Ref: ApiGatewayRestApi
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints: 
+        - app.ts
+
+  HttpApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: app.apiHandler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      Events:
+        RestApiEvent:
+          Type: HttpApi 
+          Properties:
+            Path: /http-api
+            Method: GET
+            ApiId: !Ref HttpApi
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints: 
+        - app.ts
+
+  ApiGatewayRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      AccessLogSetting:
+        DestinationArn: !GetAtt RestApiAccessLogs.Arn
+        Format: $context.requestId
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      AccessLogSettings:
+        DestinationArn: !GetAtt HttpApiAccessLogs.Arn
+        Format: $context.requestId
+      FailOnWarnings: true
+
+  RestApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  HttpApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
+  FUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: app.apiHandler
+      Runtime: nodejs18.x
+      FunctionUrlConfig:
+        AuthType: NONE
+      Architectures:
+      - x86_64
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints: 
+        - app.ts
+
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Sub 'ApplicationInsights-SAM-${AWS::StackName}'
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName: !Ref ApplicationResourceGroup
+      AutoConfigurationEnabled: 'true'
+    DependsOn: ApplicationResourceGroup
+
+Outputs:
+  RestApiUrl:
+    Description: API Gateway REST API endpoint URL
+    Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/rest-api'
+  HttpApiUrl:
+    Description: API Gateway HTTP API endpoint URL
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/http-api'
+  FunctionUrl:
+    Description: Generated Function URL
+    Value: !GetAtt FUrlFunctionUrl.FunctionUrl
